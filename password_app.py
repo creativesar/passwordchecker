@@ -294,167 +294,7 @@ def main():
         "Very Strong": "🔒"
     }
     
-    # Add custom CSS for strength meter and improved UI
-    st.markdown("""
-        <style>
-        .stProgress > div > div > div > div {
-            background-image: linear-gradient(to right, #ff0000, #ffa500, #00ff00);
-        }
-        .password-card {
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .feedback-item {
-            margin: 5px 0;
-            padding: 5px;
-            border-radius: 5px;
-        }
-        .copy-btn {
-            display: inline-block;
-            padding: 5px 10px;
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    st.title("🔒 Password Strength Analyzer")
-    st.write("Check how strong your password is and generate secure passwords!")
-    
-    tab1, tab2, tab3 = st.tabs(["Password Checker", "Password Generator", "Password Tips"])
-    
-    with tab1:
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            password = st.text_input("Enter your password", type="password")
-            # Add password length indicator
-            if password:
-                st.text(f"Password length: {len(password)} characters")
-        
-        if password:
-            score, strength, feedback = check_password_strength(password)
-            
-            # Add crack time estimation
-            zxcvbn_result = zxcvbn.zxcvbn(password)
-            crack_time = zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']
-            
-            # Normalize score for progress bar (0-100%)
-            normalized_score = min(100, max(0, (score / 10) * 100))
-            
-            # Color coding based on strength
-            if strength == "Weak":
-                bar_color = "red"
-            elif strength == "Moderate":
-                bar_color = "orange"
-            elif strength == "Strong":
-                bar_color = "lightgreen"
-            else:
-                bar_color = "green"
-                
-            st.markdown(f"### {strength_emoji.get(strength, '')} Password Strength: {strength}")
-            st.progress(normalized_score/100)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.info(f"🔢 Entropy: {calculate_entropy(password):.1f} bits")
-            with col2:
-                st.info(f"⚡ Estimated crack time: {crack_time}")
-            with col3:
-                is_leaked, leak_count = check_password_leaked(password)
-                if is_leaked:
-                    st.error(f"⚠️ Found in {leak_count:,} data breaches!")
-                else:
-                    st.success("✅ Not found in known data breaches")
-            
-            # Display feedback with better formatting
-            if feedback:
-                st.markdown("### Feedback")
-                for item in feedback:
-                    st.markdown(f"- {item}")
-    
-    with tab2:
-        st.markdown("### Generate a Strong Password")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            length = st.slider("Length", 12, 32, 16)
-            include_symbols = st.checkbox("Include Symbols", value=True)
-        with col2:
-            avoid_similar = st.checkbox("Avoid Similar Characters", value=True)
-            pattern = st.selectbox("Password Pattern", ["random", "memorable"])
-            
-        if st.button("Generate Strong Password", key="generate_btn"):
-            generated_password = generate_password(length, include_symbols, avoid_similar, pattern)
-            
-            # Store in history (limit to last 5)
-            initialize_password_history()
-            st.session_state.generated_passwords.append(generated_password)
-            if len(st.session_state.generated_passwords) > 5:
-                st.session_state.generated_passwords.pop(0)
-            
-            # Display password with copy button
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.code(generated_password)
-            with col2:
-                if st.button("📋 Copy", key="copy_btn"):
-                    try:
-                        pyperclip.copy(generated_password)
-                        st.success("Copied to clipboard!")
-                    except:
-                        st.error("Could not copy to clipboard. Please install pyperclip.")
-            
-            # Add password confirmation field
-            st.text_input("Confirm by typing the password:", key="confirm_password",
-                         help="Type the generated password to ensure you've copied it correctly")
-            
-            # Show recent generated passwords
-            if st.session_state.generated_passwords:
-                with st.expander("Recent Generated Passwords"):
-                    st.warning("⚠️ For security, these are only stored temporarily in your session")
-                    for idx, past_pwd in enumerate(reversed(st.session_state.generated_passwords[:-1]), 1):
-                        st.code(f"Previous {idx}: {past_pwd}")
-            
-            score, strength, _ = check_password_strength(generated_password)
-            
-            # Show password statistics
-            col1, col2 = st.columns(2)
-            with col1:
-                st.info(f"Password Entropy: {calculate_entropy(generated_password):.2f} bits")
-                st.success(f"Password Strength: {strength}")
-            with col2:
-                zxcvbn_result = zxcvbn.zxcvbn(generated_password)
-                st.info(f"Crack time: {zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']}")
-    
-    with tab3:
-        st.markdown("### Password Security Tips")
-        st.markdown("""
-        #### Creating Strong Passwords
-        - Use a minimum of 12 characters, preferably 16+
-        - Mix uppercase, lowercase, numbers, and special characters
-        - Avoid personal information (names, dates, etc.)
-        - Don't use dictionary words or common patterns
-        
-        #### Best Practices
-        - Use a different password for each account
-        - Change passwords regularly (every 90 days)
-        - Consider using a password manager
-        - Enable two-factor authentication when available
-        
-        #### Common Mistakes to Avoid
-        - Using sequential characters (abc123, qwerty)
-        - Simple character substitutions (p@ssw0rd)
-        - Writing passwords down or sharing them
-        - Using the same password across multiple sites
-        """)
-
-if __name__ == "__main__":
-    # Update the CSS with new animations and styles
+    # Add custom CSS with all styles in one place
     st.markdown("""
         <style>
         .stProgress > div > div > div > div {
@@ -485,7 +325,6 @@ if __name__ == "__main__":
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
-        
         .strength-indicator {
             padding: 10px;
             border-radius: 8px;
@@ -494,14 +333,12 @@ if __name__ == "__main__":
             text-align: center;
             font-weight: bold;
         }
-        
         .password-stats {
             background: rgba(255, 255, 255, 0.1);
             padding: 15px;
             border-radius: 10px;
             margin: 10px 0;
         }
-        
         .pronunciation-guide {
             background: #f0f2f6;
             padding: 10px;
@@ -510,6 +347,12 @@ if __name__ == "__main__":
         }
         </style>
     """, unsafe_allow_html=True)
+    
+    st.title("🔒 Password Strength Analyzer")
+    st.write("Check how strong your password is and generate secure passwords!")
+    
+    # Create tabs
+    tab1, tab2, tab3 = st.tabs(["Password Checker", "Password Generator", "Password Tips"])
     
     with tab1:
         col1, col2 = st.columns([3, 1])
