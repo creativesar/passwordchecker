@@ -273,6 +273,45 @@ def main():
             avoid_similar = st.checkbox("Avoid Similar Characters", value=True)
             if pattern == "memorable":
                 word_count = st.slider("Number of Words", 3, 6, 4)
+        
+        # Add Generate Password button and display
+        if st.button("Generate Password"):
+            if pattern == "memorable":
+                generated_password = generate_password(length, include_symbols, avoid_similar, pattern, word_count)
+            else:
+                generated_password = generate_password(length, include_symbols, avoid_similar, pattern)
+            
+            # Display generated password
+            st.code(generated_password)
+            
+            # Show password strength analysis
+            score, strength, _ = check_password_strength(generated_password)
+            
+            # Display password statistics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.success(f"Password Strength: {strength}")
+            with col2:
+                entropy = calculate_entropy(generated_password)
+                st.info(f"Entropy: {entropy:.2f} bits")
+            with col3:
+                zxcvbn_result = zxcvbn.zxcvbn(generated_password)
+                crack_time = zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']
+                st.info(f"Estimated crack time: {crack_time}")
+            
+            # Show character composition
+            char_types = {
+                "Uppercase": len(re.findall(r'[A-Z]', generated_password)),
+                "Lowercase": len(re.findall(r'[a-z]', generated_password)),
+                "Numbers": len(re.findall(r'\d', generated_password)),
+                "Symbols": len(re.findall(r'[!@#$%^&*]', generated_password))
+            }
+            
+            # Display character distribution
+            fig = px.pie(values=list(char_types.values()),
+                        names=list(char_types.keys()),
+                        title="Character Distribution")
+            st.plotly_chart(fig, use_container_width=True)
     
     with tab3:
         st.header("🔐 Password Security Best Practices")
