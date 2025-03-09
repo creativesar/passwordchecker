@@ -71,12 +71,53 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
         feedback.append(suggestion)
     
     # Check length with more granular scoring
-    if len(password) >= 12:
+    if len(password) >= 16:
+        score += 3
+    elif len(password) >= 12:
         score += 2
     elif len(password) >= 8:
         score += 1
     else:
         feedback.append("Password should be at least 8 characters long (12+ recommended)")
+    
+    # Check for keyboard patterns
+    keyboard_patterns = ['qwerty', 'asdfgh', 'zxcvbn', '123456']
+    if any(pattern.lower() in password.lower() for pattern in keyboard_patterns):
+        score -= 2
+        feedback.append("Avoid keyboard patterns (e.g., 'qwerty', 'asdfgh')")
+    
+    # Check for common substitutions
+    substitutions = [('a', '@'), ('i', '1'), ('o', '0'), ('s', '$'), ('e', '3')]
+    sub_count = 0
+    for char, sub in substitutions:
+        if char in password.lower() and sub in password:
+            sub_count += 1
+    if sub_count >= 2:
+        score -= 1
+        feedback.append("Using common character substitutions makes password predictable")
+    
+    # Check for dates and years
+    if re.search(r'19\d{2}|20\d{2}', password):
+        score -= 1
+        feedback.append("Avoid using years in your password")
+    if re.search(r'0[1-9]|1[0-2])[/-]([0-2][0-9]|3[01])', password):
+        score -= 1
+        feedback.append("Avoid using dates in your password")
+
+    # Enhanced sequential character check
+    sequences = [
+        'abcdefghijklmnopqrstuvwxyz',
+        '0123456789',
+        'qwertyuiop',
+        'asdfghjkl',
+        'zxcvbnm'
+    ]
+    for seq in sequences:
+        for i in range(len(seq) - 2):
+            if seq[i:i+3].lower() in password.lower() or seq[i:i+3].lower()[::-1] in password.lower():
+                score -= 1
+                feedback.append("Avoid sequential characters (including keyboard patterns)")
+                break
     
     # Check for uppercase and lowercase
     if re.search(r'[A-Z]', password) and re.search(r'[a-z]', password):
@@ -108,11 +149,6 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
     if re.search(r'(.)\1{2,}', password):
         score -= 1
         feedback.append("Avoid repeating characters (e.g., 'aaa')")
-    
-    # Check for sequential characters
-    if has_sequential_chars(password):
-        score -= 1
-        feedback.append("Avoid sequential characters (e.g., 'abc', '123')")
     
     # Check for dictionary words
     word_pattern = re.compile(r'^[a-zA-Z]{4,}$')
