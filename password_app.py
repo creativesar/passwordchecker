@@ -6,6 +6,7 @@ from typing import Tuple
 import math
 import json
 from datetime import datetime
+import pandas as pd  # Add pandas import
 
 def calculate_entropy(password: str) -> float:
     char_set_size = 0
@@ -161,25 +162,33 @@ def main():
                 unsafe_allow_html=True
             )
 
-    # Password History
+    # Password History section with error handling
     if 'password_history' not in st.session_state:
         st.session_state.password_history = []
 
     if password:
-        # Store password check history
-        history_entry = {
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'strength': strength,
-            'score': score,
-            'entropy': entropy
-        }
-        st.session_state.password_history.append(history_entry)
+        try:
+            # Store password check history
+            history_entry = {
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'strength': strength,
+                'score': score,
+                'entropy': round(entropy, 2)  # Round entropy for better display
+            }
+            st.session_state.password_history.append(history_entry)
 
-    # Display password check history
-    if st.session_state.password_history:
-        st.markdown("### Password Check History")
-        history_df = pd.DataFrame(st.session_state.password_history)
-        st.dataframe(history_df)
+            # Display password check history
+            if st.session_state.password_history:
+                st.markdown("### Password Check History")
+                try:
+                    history_df = pd.DataFrame(st.session_state.password_history)
+                    st.dataframe(history_df)
+                except Exception as e:
+                    st.error("Error displaying password history")
+                    print(f"Error: {e}")
+        except Exception as e:
+            st.error("Error updating password history")
+            print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
