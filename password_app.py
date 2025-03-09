@@ -10,6 +10,9 @@ import requests
 import json
 import zxcvbn
 import time  # Add time module import
+import pandas as pd
+from datetime import datetime
+import plotly.express as px
 
 def calculate_entropy(password: str) -> float:
     char_set_size = 0
@@ -156,10 +159,13 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
     return score, strength, feedback
 
 def generate_password(length: int = 16, include_symbols: bool = True, 
-                     avoid_similar: bool = True, pattern: str = "random") -> str:
+                     avoid_similar: bool = True, pattern: str = "random",
+                     word_count: int = 4) -> str:
     if pattern == "memorable":
-        words = ["correct", "horse", "battery", "staple"]  # Example words, should be expanded
-        password = ''.join(random.choice(words).capitalize() for _ in range(3))
+        # Enhanced memorable password generation
+        with open("wordlist.txt", "r") as f:
+            words = [word.strip() for word in f.readlines()]
+        password = ''.join(random.choice(words).capitalize() for _ in range(word_count))
         password += str(random.randint(100, 999))
         if include_symbols:
             password += random.choice("!@#$%^&*")
@@ -199,27 +205,38 @@ def main():
     st.set_page_config(page_title="Password Strength Analyzer", page_icon="🔒",
                        layout="wide")
     
-    # Define strength emoji dictionary at the start
-    strength_emoji = {
-        "Weak": "⚠️",
-        "Moderate": "📊",
-        "Strong": "💪",
-        "Very Strong": "🔒"
-    }
+    # Add sidebar
+    with st.sidebar:
+        st.header("📊 Password Statistics")
+        if 'password_history' in st.session_state:
+            df = pd.DataFrame(
+                [(k, v) for k, v in st.session_state.password_history.items()],
+                columns=['Password Hash', 'Timestamp']
+            )
+            df['Date'] = pd.to_datetime(df['Timestamp'], unit='s')
+            st.write(f"Total Passwords Checked: {len(df)}")
+            
+            # Show password check history
+            fig = px.line(df, x='Date', y=df.index, 
+                         title='Password Check History')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        st.header("🛡️ Password Policy")
+        st.write("""
+        Strong passwords should:
+        - Be at least 12 characters long
+        - Include uppercase and lowercase letters
+        - Include numbers and symbols
+        - Avoid common patterns and words
+        - Be unique for each account
+        - Be changed every 90 days
+        """)
     
-    # Add custom CSS for strength meter
-    st.markdown("""
-        <style>
-        .stProgress > div > div > div > div {
-            background-image: linear-gradient(to right, #ff0000, #ffa500, #00ff00);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    st.title("🔒 Password Strength Analyzer")
+    # Main content
+    st.title("🔒 Advanced Password Strength Analyzer")
     st.write("Check how strong your password is and generate secure passwords!")
     
-    tab1, tab2 = st.tabs(["Password Checker", "Password Generator"])
+    tab1, tab2, tab3 = st.tabs(["Password Checker", "Password Generator", "Security Tips"])
     
     with tab1:
         col1, col2 = st.columns([3, 1])
@@ -231,50 +248,50 @@ def main():
                 st.code(password)
         
         if password:
-            score, strength, feedback = check_password_strength(password)
+            # Add password composition analysis
+            char_types = {
+                "Uppercase": len(re.findall(r'[A-Z]', password)),
+                "Lowercase": len(re.findall(r'[a-z]', password)),
+                "Numbers": len(re.findall(r'\d', password)),
+                "Symbols": len(re.findall(r'[!@#$%^&*]', password))
+            }
             
-            # Add crack time estimation
-            zxcvbn_result = zxcvbn.zxcvbn(password)
-            crack_time = zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                strength_display = f"{strength_emoji.get(strength, '')} Strength: {strength}"
-                if strength == "Weak":
-                    st.error(strength_display)
-                elif strength == "Moderate":
-                    st.warning(strength_display)
-                else:
-                    st.success(strength_display)
-            with col2:
-                st.info(f"🔢 Entropy: {calculate_entropy(password):.1f} bits")
-            with col3:
-                st.info(f"⚡ Estimated crack time: {crack_time}")
+            st.write("Password Composition:")
+            fig = px.pie(values=list(char_types.values()),
+                        names=list(char_types.keys()),
+                        title="Character Distribution")
+            st.plotly_chart(fig, use_container_width=True)
     
     with tab2:
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns(2)
         with col1:
-            length = st.slider("Length", 12, 32, 16)
+            pattern = st.selectbox("Generation Pattern", 
+                                 ["random", "memorable", "phrase"])
+            length = st.slider("Password Length", 12, 32, 16)
         with col2:
-            include_symbols = st.checkbox("Symbols", value=True)
-        with col3:
-            avoid_similar = st.checkbox("Avoid Similar", value=True)
-        with col4:
-            pattern = st.selectbox("Pattern", ["random", "memorable"])
-            
-        if st.button("Generate Strong Password"):
-            generated_password = generate_password(length, include_symbols, avoid_similar, pattern)
-            st.code(generated_password)
-            score, strength, _ = check_password_strength(generated_password)
-            
-            # Show password statistics
-            col1, col2 = st.columns(2)
-            with col1:
-                st.info(f"Password Entropy: {calculate_entropy(generated_password):.2f} bits")
-                st.success(f"Password Strength: {strength}")
-            with col2:
-                zxcvbn_result = zxcvbn.zxcvbn(generated_password)
-                st.info(f"Crack time: {zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']}")
+            include_symbols = st.checkbox("Include Symbols", value=True)
+            avoid_similar = st.checkbox("Avoid Similar Characters", value=True)
+            if pattern == "memorable":
+                word_count = st.slider("Number of Words", 3, 6, 4)
+    
+    with tab3:
+        st.header("🔐 Password Security Best Practices")
+        st.write("""
+        1. Use a different password for each account
+        2. Enable two-factor authentication when available
+        3. Use a password manager
+        4. Regularly check for password breaches
+        5. Avoid using personal information
+        6. Don't share passwords
+        7. Use passphrases instead of single words
+        """)
+        
+        # Add password breach statistics
+        st.header("📈 Password Breach Statistics")
+        if 'breach_count' not in st.session_state:
+            st.session_state.breach_count = 0
+        st.metric("Passwords Found in Breaches", 
+                 f"{st.session_state.breach_count:,}")
 
 if __name__ == "__main__":
     main()
