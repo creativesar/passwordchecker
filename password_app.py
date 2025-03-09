@@ -100,7 +100,7 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
     if re.search(r'19\d{2}|20\d{2}', password):
         score -= 1
         feedback.append("Avoid using years in your password")
-    if re.search(r'0[1-9]|1[0-2])[/-]([0-2][0-9]|3[01])', password):
+    if re.search(r'(0[1-9]|1[0-2])[/-]([0-2][0-9]|3[01])', password):  # Fixed parentheses
         score -= 1
         feedback.append("Avoid using dates in your password")
 
