@@ -47,6 +47,8 @@ def has_sequential_chars(password: str) -> bool:
 def initialize_password_history():
     if 'password_history' not in st.session_state:
         st.session_state.password_history = {}
+    if 'generated_passwords' not in st.session_state:
+        st.session_state.generated_passwords = []
 
 def get_password_age(password_hash: str) -> int:
     initialize_password_history()
@@ -304,10 +306,9 @@ def main():
         col1, col2 = st.columns([3, 1])
         with col1:
             password = st.text_input("Enter your password", type="password")
-        with col2:
-            show_password = st.checkbox("Show password")
-            if show_password:
-                st.code(password)
+            # Add password length indicator
+            if password:
+                st.text(f"Password length: {len(password)} characters")
         
         if password:
             score, strength, feedback = check_password_strength(password)
@@ -364,6 +365,12 @@ def main():
         if st.button("Generate Strong Password", key="generate_btn"):
             generated_password = generate_password(length, include_symbols, avoid_similar, pattern)
             
+            # Store in history (limit to last 5)
+            initialize_password_history()
+            st.session_state.generated_passwords.append(generated_password)
+            if len(st.session_state.generated_passwords) > 5:
+                st.session_state.generated_passwords.pop(0)
+            
             # Display password with copy button
             col1, col2 = st.columns([3, 1])
             with col1:
@@ -375,6 +382,17 @@ def main():
                         st.success("Copied to clipboard!")
                     except:
                         st.error("Could not copy to clipboard. Please install pyperclip.")
+            
+            # Add password confirmation field
+            st.text_input("Confirm by typing the password:", key="confirm_password",
+                         help="Type the generated password to ensure you've copied it correctly")
+            
+            # Show recent generated passwords
+            if st.session_state.generated_passwords:
+                with st.expander("Recent Generated Passwords"):
+                    st.warning("⚠️ For security, these are only stored temporarily in your session")
+                    for idx, past_pwd in enumerate(reversed(st.session_state.generated_passwords[:-1]), 1):
+                        st.code(f"Previous {idx}: {past_pwd}")
             
             score, strength, _ = check_password_strength(generated_password)
             
