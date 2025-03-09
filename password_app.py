@@ -9,8 +9,8 @@ import hashlib
 import requests
 import json
 import zxcvbn
-import time  # Add time module import
-import pyperclip  # Add pyperclip for clipboard functionality
+import time  
+import pyperclip 
 
 def calculate_entropy(password: str) -> float:
     char_set_size = 0
