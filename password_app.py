@@ -157,6 +157,14 @@ def generate_password(length: int = 16, include_symbols: bool = True, avoid_simi
 def main():
     st.set_page_config(page_title="Password Strength Analyzer", page_icon="🔒")
     
+    # Define strength emoji dictionary at the start
+    strength_emoji = {
+        "Weak": "⚠️",
+        "Moderate": "📊",
+        "Strong": "💪",
+        "Very Strong": "🔒"
+    }
+    
     # Add custom CSS for strength meter
     st.markdown("""
         <style>
@@ -221,13 +229,7 @@ def main():
             entropy = calculate_entropy(generated_password)
             st.info(f"Password Entropy: {entropy:.2f} bits")
             st.success(f"Password Strength: {strength}")
-    
-    strength_emoji = {
-        "Weak": "⚠️",
-        "Moderate": "📊",
-        "Strong": "💪",
-        "Very Strong": "🔒"
-    }
 
+    # Remove the dictionary definition from here
 if __name__ == "__main__":
     main()
