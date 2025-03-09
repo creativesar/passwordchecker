@@ -139,29 +139,29 @@ def main():
                         st.metric("Entropy", f"{entropy:.1f} bits")
                     with m3:
                         st.metric("Length", len(password))
-            
-            # Display strength with enhanced visuals
-            if strength == "Weak":
-                st.error("🔓 " + f"Password Strength: {strength}")
-            elif strength == "Moderate":
-                st.warning("🔐 " + f"Password Strength: {strength}")
-            else:
-                st.success("🔒 " + f"Password Strength: {strength}")
-            
-            st.progress(score/5)
-            
-            # Display feedback with better formatting
-            if feedback:
-                st.write("### Improvement Suggestions:")
-                for suggestion in feedback:
-                    st.warning("• " + suggestion)
+                    
+                    # Display strength with enhanced visuals
+                    if strength == "Weak":
+                        st.error("🔓 " + f"Password Strength: {strength}")
+                    elif strength == "Moderate":
+                        st.warning("🔐 " + f"Password Strength: {strength}")
+                    else:
+                        st.success("🔒 " + f"Password Strength: {strength}")
+                    
+                    st.progress(score/5)
+                    
+                    # Display feedback with better formatting
+                    if feedback:
+                        st.write("### Improvement Suggestions:")
+                        for suggestion in feedback:
+                            st.warning("• " + suggestion)
 
-        with col2:
-            st.markdown("### Password Generator")
-            if st.button("🎲 Generate Strong Password"):
-                generated_password = generate_password()
-                st.code(generated_password)
-                st.info("✅ This password meets all security criteria!")
+            with col2:
+                st.markdown("### Password Generator")
+                if st.button("🎲 Generate Strong Password"):
+                    generated_password = generate_password()
+                    st.code(generated_password)
+                    st.info("✅ This password meets all security criteria!")
                 
                 # Add copy button
                 st.markdown(f"""
@@ -174,6 +174,37 @@ def main():
                 )
 
         # Password History section with error handling
+        if 'password_history' not in st.session_state:
+            st.session_state.password_history = []
+
+        if password:
+            try:
+                # Store password check history
+                history_entry = {
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'strength': strength,
+                    'score': score,
+                    'entropy': round(entropy, 2)  # Round entropy for better display
+                }
+                st.session_state.password_history.append(history_entry)
+
+                # Display password check history
+                if st.session_state.password_history:
+                    st.markdown("### Password Check History")
+                    try:
+                        history_df = pd.DataFrame(st.session_state.password_history)
+                        st.dataframe(history_df)
+                    except Exception as e:
+                        st.error("Error displaying password history")
+                        print(f"Error: {e}")
+            except Exception as e:
+                st.error("Error updating password history")
+                print(f"Error: {e}")
+        except Exception as e:
+            st.error(f"An error occurred in the main content: {str(e)}")
+            print(f"Main content error: {e}")
+
+        # Display error
         if 'password_history' not in st.session_state:
             st.session_state.password_history = []
 
