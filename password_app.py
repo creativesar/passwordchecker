@@ -9,6 +9,7 @@ import hashlib
 import requests
 import json
 import zxcvbn
+import time  # Add time module import
 
 def calculate_entropy(password: str) -> float:
     char_set_size = 0
@@ -42,10 +43,18 @@ def has_sequential_chars(password: str) -> bool:
                 return True
     return False
 
-def get_password_age(password_hash: str) -> int:
+def initialize_password_history():
     if 'password_history' not in st.session_state:
         st.session_state.password_history = {}
-    return int(time.time() - st.session_state.password_history.get(password_hash, time.time()))
+
+def get_password_age(password_hash: str) -> int:
+    initialize_password_history()
+    current_time = int(time.time())
+    return current_time - st.session_state.password_history.get(password_hash, current_time)
+
+def update_password_history(password_hash: str):
+    initialize_password_history()
+    st.session_state.password_history[password_hash] = int(time.time())
 
 def check_password_strength(password: str) -> Tuple[int, str, list]:
     score = 0
@@ -139,6 +148,7 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
         
     # Check password age if it exists in history
     password_hash = hashlib.sha256(password.encode()).hexdigest()
+    update_password_history(password_hash)
     password_age = get_password_age(password_hash) / (24 * 3600)  # Convert to days
     if password_age > 90:  # 90 days threshold
         feedback.append(f"⚠️ Password is {int(password_age)} days old. Consider updating it.")
