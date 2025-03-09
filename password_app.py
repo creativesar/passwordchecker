@@ -248,6 +248,36 @@ def main():
                 st.code(password)
         
         if password:
+            score, strength, feedback = check_password_strength(password)
+            
+            # Add crack time estimation
+            zxcvbn_result = zxcvbn.zxcvbn(password)
+            crack_time = zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']
+            
+            # Display strength and metrics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                strength_display = f"{strength_emoji.get(strength, '')} Strength: {strength}"
+                if strength == "Weak":
+                    st.error(strength_display)
+                elif strength == "Moderate":
+                    st.warning(strength_display)
+                else:
+                    st.success(strength_display)
+            with col2:
+                st.info(f"🔢 Entropy: {calculate_entropy(password):.1f} bits")
+            with col3:
+                st.info(f"⚡ Estimated crack time: {crack_time}")
+            
+            # Display progress bar
+            st.progress(min(score/8, 1.0))
+            
+            # Display feedback
+            if feedback:
+                st.write("Suggestions for improvement:")
+                for suggestion in feedback:
+                    st.write("• " + suggestion)
+            
             # Add password composition analysis
             char_types = {
                 "Uppercase": len(re.findall(r'[A-Z]', password)),
