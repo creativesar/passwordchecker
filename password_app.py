@@ -8,6 +8,7 @@ from pathlib import Path
 import hashlib
 import requests
 import json
+import zxcvbn
 
 def calculate_entropy(password: str) -> float:
     char_set_size = 0
@@ -41,9 +42,24 @@ def has_sequential_chars(password: str) -> bool:
                 return True
     return False
 
+def get_password_age(password_hash: str) -> int:
+    if 'password_history' not in st.session_state:
+        st.session_state.password_history = {}
+    return int(time.time() - st.session_state.password_history.get(password_hash, time.time()))
+
 def check_password_strength(password: str) -> Tuple[int, str, list]:
     score = 0
     feedback = []
+    
+    # Add zxcvbn analysis
+    zxcvbn_result = zxcvbn.zxcvbn(password)
+    score += zxcvbn_result['score']
+    
+    # Add feedback from zxcvbn
+    if zxcvbn_result['feedback']['warning']:
+        feedback.append(zxcvbn_result['feedback']['warning'])
+    for suggestion in zxcvbn_result['feedback']['suggestions']:
+        feedback.append(suggestion)
     
     # Check length with more granular scoring
     if len(password) >= 12:
@@ -121,9 +137,24 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
     else:
         strength = "Very Strong"
         
+    # Check password age if it exists in history
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    password_age = get_password_age(password_hash) / (24 * 3600)  # Convert to days
+    if password_age > 90:  # 90 days threshold
+        feedback.append(f"⚠️ Password is {int(password_age)} days old. Consider updating it.")
+    
     return score, strength, feedback
 
-def generate_password(length: int = 16, include_symbols: bool = True, avoid_similar: bool = True) -> str:
+def generate_password(length: int = 16, include_symbols: bool = True, 
+                     avoid_similar: bool = True, pattern: str = "random") -> str:
+    if pattern == "memorable":
+        words = ["correct", "horse", "battery", "staple"]  # Example words, should be expanded
+        password = ''.join(random.choice(words).capitalize() for _ in range(3))
+        password += str(random.randint(100, 999))
+        if include_symbols:
+            password += random.choice("!@#$%^&*")
+        return password
+    
     if length < 12:
         length = 12
     
@@ -155,7 +186,8 @@ def generate_password(length: int = 16, include_symbols: bool = True, avoid_simi
     return ''.join(password)
 
 def main():
-    st.set_page_config(page_title="Password Strength Analyzer", page_icon="🔒")
+    st.set_page_config(page_title="Password Strength Analyzer", page_icon="🔒",
+                       layout="wide")
     
     # Define strength emoji dictionary at the start
     strength_emoji = {
@@ -191,9 +223,11 @@ def main():
         if password:
             score, strength, feedback = check_password_strength(password)
             
-            # Enhanced strength display
-            entropy = calculate_entropy(password)
-            col1, col2 = st.columns(2)
+            # Add crack time estimation
+            zxcvbn_result = zxcvbn.zxcvbn(password)
+            crack_time = zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']
+            
+            col1, col2, col3 = st.columns(3)
             with col1:
                 strength_display = f"{strength_emoji.get(strength, '')} Strength: {strength}"
                 if strength == "Weak":
@@ -203,33 +237,34 @@ def main():
                 else:
                     st.success(strength_display)
             with col2:
-                st.info(f"🔢 Entropy: {entropy:.1f} bits")
-            
-            # Display progress bar
-            st.progress(min(score/8, 1.0))
-            
-            if feedback:
-                st.write("Suggestions for improvement:")
-                for suggestion in feedback:
-                    st.write("• " + suggestion)
+                st.info(f"🔢 Entropy: {calculate_entropy(password):.1f} bits")
+            with col3:
+                st.info(f"⚡ Estimated crack time: {crack_time}")
     
     with tab2:
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             length = st.slider("Length", 12, 32, 16)
         with col2:
             include_symbols = st.checkbox("Symbols", value=True)
         with col3:
             avoid_similar = st.checkbox("Avoid Similar", value=True)
+        with col4:
+            pattern = st.selectbox("Pattern", ["random", "memorable"])
             
         if st.button("Generate Strong Password"):
-            generated_password = generate_password(length, include_symbols)
+            generated_password = generate_password(length, include_symbols, avoid_similar, pattern)
             st.code(generated_password)
             score, strength, _ = check_password_strength(generated_password)
-            entropy = calculate_entropy(generated_password)
-            st.info(f"Password Entropy: {entropy:.2f} bits")
-            st.success(f"Password Strength: {strength}")
+            
+            # Show password statistics
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"Password Entropy: {calculate_entropy(generated_password):.2f} bits")
+                st.success(f"Password Strength: {strength}")
+            with col2:
+                zxcvbn_result = zxcvbn.zxcvbn(generated_password)
+                st.info(f"Crack time: {zxcvbn_result['crack_times_display']['offline_fast_hashing_1e10_per_second']}")
 
-    # Remove the dictionary definition from here
 if __name__ == "__main__":
     main()
