@@ -111,6 +111,16 @@ def check_password_strength(password: str) -> Tuple[int, str, list]:
     elif entropy > 60:
         score += 1
     
+    # Determine strength level based on final score
+    if score <= 2:
+        strength = "Weak"
+    elif score <= 4:
+        strength = "Moderate"
+    elif score <= 6:
+        strength = "Strong"
+    else:
+        strength = "Very Strong"
+        
     return score, strength, feedback
 
 def generate_password(length: int = 16, include_symbols: bool = True, avoid_similar: bool = True) -> str:
@@ -211,6 +221,13 @@ def main():
             entropy = calculate_entropy(generated_password)
             st.info(f"Password Entropy: {entropy:.2f} bits")
             st.success(f"Password Strength: {strength}")
+    
+    strength_emoji = {
+        "Weak": "⚠️",
+        "Moderate": "📊",
+        "Strong": "💪",
+        "Very Strong": "🔒"
+    }
 
 if __name__ == "__main__":
     main()
